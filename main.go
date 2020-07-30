@@ -15,9 +15,10 @@ import (
 func PreMap() (map[string]int, map[string]int) {
 
 	videoExt := [...]string{"mp4", "mkv", "mov", "webm", "avi", "wmv", "mpg",
-		"flv", "3gp", "rmvb", "MP4", "MPG", "ass", "srt", "ssa", "MOV"}
+		"flv", "3gp", "rmvb", "MP4", "MPG", "ass", "srt", "ssa", "MOV", "3GP",
+		"asf", "ASF", "AVI", "m4v", "mpeg", "rm", "ts", "WMV"}
 	imageExt := [...]string{"jpg", "png", "gif", "webp", "jpeg", "JPG", "PNG",
-		"bmp"}
+		"bmp", "GIF", "JPEG"}
 	videoExtMap := make(map[string]int)
 	imageExtMap := make(map[string]int)
 
