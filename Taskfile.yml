@@ -4,9 +4,10 @@ version: '3'
 
 vars:
   GREETING: Hello, World!
-  # 新增构建相关变量（默认构建linux amd64）
   BUILD_OS: linux
   BUILD_ARCH: amd64
+  OUTPUT_DIR: bin
+  APP_NAME: classified-file
 
 tasks:
   default:
@@ -14,14 +15,39 @@ tasks:
       - echo "{{.GREETING}}"
     silent: true
 
-  # 新增跨平台构建任务
   build:
-    desc: 跨平台构建程序（默认目标：linux/amd64）
-    # 设置构建环境变量
+    desc: Build for specific platform
+    vars:
+      EXEC_EXT: "{{if eq .BUILD_OS \"windows\"}}.exe{{end}}"
     env:
-      CGO_ENABLED: 0  # 关闭CGO
-      GOOS: "{{.BUILD_OS}}"  # 目标操作系统
-      GOARCH: "{{.BUILD_ARCH}}"  # 目标架构
+      CGO_ENABLED: 0
+      GOOS: "{{.BUILD_OS}}"
+      GOARCH: "{{.BUILD_ARCH}}"
     cmds:
-      - go build -ldflags="-s -w" -o bin/classified-file .
+      - echo "Building for {{.BUILD_OS}}/{{.BUILD_ARCH}}"
+      - mkdir -p {{.OUTPUT_DIR}}
+      - go build -ldflags="-s -w" -o {{.OUTPUT_DIR}}/{{.APP_NAME}}{{.EXEC_EXT}} .
     silent: false
+
+  build-all:
+    desc: Build for all supported platforms
+    cmds:
+      - task: build
+        vars:
+          BUILD_OS: windows
+          BUILD_ARCH: amd64
+      - task: build
+        vars:
+          BUILD_OS: linux
+          BUILD_ARCH: amd64
+      - task: build
+        vars:
+          BUILD_OS: darwin
+          BUILD_ARCH: amd64
+    silent: false
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.OUTPUT_DIR}}
+    silent: false 
