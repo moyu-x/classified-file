@@ -17,7 +17,6 @@ type Stats struct {
 type Processor struct {
 	SourceDir     string          // 源目录路径
 	TargetDir     string          // 目标目录路径
-	DuplicatesDir string          // 重复文件存放目录路径
 	DB            *database.DB    // 数据库连接
 	FileHashes    map[string]bool // 文件哈希缓存，用于快速查找重复文件
 	Stats         Stats           // 处理统计信息

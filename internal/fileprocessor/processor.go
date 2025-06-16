@@ -14,24 +14,17 @@ import (
 // sourceDir: 源文件目录
 // targetDir: 目标文件目录
 // db: 数据库连接
-// duplicatesDir: 重复文件存放目录
-func New(sourceDir, targetDir string, db *database.DB, duplicatesDir string) (*Processor, error) {
+func New(sourceDir, targetDir string, db *database.DB) (*Processor, error) {
 	// 加载已有哈希值，用于重复文件检测
 	hashes, err := db.LoadHashes()
 	if err != nil {
 		return nil, fmt.Errorf("加载哈希值失败: %w", err)
 	}
 
-	// 验证必要的参数
-	if duplicatesDir == "" {
-		return nil, fmt.Errorf("重复文件目录不能为空")
-	}
-
 	// 创建处理器实例
 	processor := &Processor{
 		SourceDir:     sourceDir,
 		TargetDir:     targetDir,
-		DuplicatesDir: duplicatesDir,
 		DB:            db,
 		FileHashes:    hashes,
 		Fs:            afero.NewOsFs(),
@@ -80,11 +73,6 @@ func (p *Processor) CountTotalFiles() error {
 // ProcessFiles 处理源目录中的所有文件
 // 遍历源目录中的所有文件，对每个文件进行处理
 func (p *Processor) ProcessFiles() error {
-	// 确保重复文件目录存在
-	if err := p.Fs.MkdirAll(p.DuplicatesDir, 0755); err != nil {
-		return fmt.Errorf("创建重复文件目录失败: %w", err)
-	}
-
 	// 记录每种文件类型的最大目录编号
 	p.logMaxDirNumbers()
 
