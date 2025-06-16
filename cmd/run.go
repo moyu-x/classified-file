@@ -13,11 +13,10 @@ import (
 
 var (
 	// 命令行参数
-	dbPath        string // 数据库路径
-	sourceDir     string // 源目录
-	targetDir     string // 目标目录
-	duplicatesDir string // 重复文件目录
-	debugMode     bool   // 调试模式
+	dbPath    string // 数据库路径
+	sourceDir string // 源目录
+	targetDir string // 目标目录
+	debugMode bool   // 调试模式
 )
 
 // runCmd 代表 run 命令
@@ -27,15 +26,15 @@ var runCmd = &cobra.Command{
 	Long: `处理源目录中的文件并整理到目标目录:
 1. 读取源目录中的所有文件
 2. 计算每个文件的XXHash哈希值
-3. 与已有记录对比哈希值，将重复文件移动到独立目录
+3. 与已有记录对比哈希值，删除重复文件
 4. 按文件类型分类并存储到目标目录`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// 初始化日志
 		logger.Init(debugMode)
 
 		// 验证必要的参数
-		if sourceDir == "" || targetDir == "" || duplicatesDir == "" {
-			logger.Fatal().Msg("错误: 必须提供源目录、目标目录和重复文件目录")
+		if sourceDir == "" || targetDir == "" {
+			logger.Fatal().Msg("错误: 必须提供源目录和目标目录")
 			return
 		}
 
@@ -45,12 +44,6 @@ var runCmd = &cobra.Command{
 		fs := afero.NewOsFs()
 		if err := fs.MkdirAll(targetDir, 0755); err != nil {
 			logger.Fatal().Err(err).Str("path", targetDir).Msg("创建目标目录失败")
-			return
-		}
-
-		// 确保重复文件目录存在
-		if err := fs.MkdirAll(duplicatesDir, 0755); err != nil {
-			logger.Fatal().Err(err).Str("path", duplicatesDir).Msg("创建重复文件目录失败")
 			return
 		}
 
@@ -65,7 +58,7 @@ var runCmd = &cobra.Command{
 
 		// 创建文件处理器
 		logger.Info().Msg("正在从数据库加载文件哈希...")
-		processor, err := fileprocessor.New(sourceDir, targetDir, db, duplicatesDir)
+		processor, err := fileprocessor.New(sourceDir, targetDir, db)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("创建文件处理器失败")
 			return
@@ -98,12 +91,11 @@ var runCmd = &cobra.Command{
 			Int("errors", processor.Stats.Errors).
 			Msg("处理完成")
 
-		// 提示重复文件位置
+		// 提示重复文件数量
 		if processor.Stats.Duplicates > 0 {
 			logger.Info().
 				Int("duplicates", processor.Stats.Duplicates).
-				Str("duplicates_dir", processor.DuplicatesDir).
-				Msg("重复文件已移动到独立目录，可以手动检查和删除")
+				Msg("已删除重复文件")
 		}
 	},
 }
@@ -114,7 +106,6 @@ func init() {
 	// 添加命令行参数
 	runCmd.Flags().StringVarP(&sourceDir, "source", "s", "", "源目录路径 (必需)")
 	runCmd.Flags().StringVarP(&targetDir, "target", "t", "", "目标目录路径 (必需)")
-	runCmd.Flags().StringVarP(&duplicatesDir, "duplicates", "p", "", "重复文件存放目录 (必需)")
 	runCmd.Flags().StringVarP(&dbPath, "db", "d", "./file_hashes.db", "SQLite数据库文件路径")
 	runCmd.Flags().BoolVarP(&debugMode, "debug", "v", false, "启用调试模式")
 
@@ -126,11 +117,6 @@ func init() {
 
 	if err := runCmd.MarkFlagRequired("target"); err != nil {
 		fmt.Println("目标文件夹目录需要给出")
-		return
-	}
-
-	if err := runCmd.MarkFlagRequired("duplicates"); err != nil {
-		fmt.Println("重复文件存放目录需要给出")
 		return
 	}
 }

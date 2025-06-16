@@ -13,26 +13,20 @@ import (
 )
 
 // handleDuplicateFile 处理重复文件
-// 将重复文件移动到指定的重复文件目录
+// 直接删除重复文件
 func (p *Processor) handleDuplicateFile(filePath, hashStr string) error {
 	// 更新统计信息
 	p.Stats.Duplicates++
-
-	// 构建目标文件路径，使用哈希值作为前缀避免文件名冲突
-	fileName := filepath.Base(filePath)
-	dupFileName := hashStr + "_" + fileName
-	dupFilePath := filepath.Join(p.DuplicatesDir, dupFileName)
 
 	// 记录日志
 	logger.Debug().
 		Str("file", filePath).
 		Str("hash", hashStr).
-		Str("duplicate_path", dupFilePath).
-		Msg("移动重复文件")
+		Msg("删除重复文件")
 
-	// 使用 rename 移动文件到重复文件目录
-	if err := p.moveFileWithRename(filePath, dupFilePath); err != nil {
-		return fmt.Errorf("移动重复文件失败: %w", err)
+	// 删除文件
+	if err := p.Fs.Remove(filePath); err != nil {
+		return fmt.Errorf("删除重复文件失败: %w", err)
 	}
 
 	return nil
