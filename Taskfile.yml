@@ -1,53 +1,152 @@
-# https://taskfile.dev
+# Taskfile for classified-file project
+# 使用方法: task <task_name>
 
 version: '3'
 
 vars:
-  GREETING: Hello, World!
-  BUILD_OS: linux
-  BUILD_ARCH: amd64
-  OUTPUT_DIR: bin
-  APP_NAME: classified-file
+  BINARY_NAME: classified-file
+  BUILD_DIR: build
+  PKG: github.com/moyu-x/classified-file
+  GOFLAGS: -v
 
 tasks:
   default:
+    desc: 显示所有可用任务
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - task --list
 
+  # 构建相关任务
   build:
-    desc: Build for specific platform
-    vars:
-      EXEC_EXT: "{{if eq .BUILD_OS \"windows\"}}.exe{{end}}"
-    env:
-      CGO_ENABLED: 0
-      GOOS: "{{.BUILD_OS}}"
-      GOARCH: "{{.BUILD_ARCH}}"
+    desc: 编译程序
     cmds:
-      - echo "Building for {{.BUILD_OS}}/{{.BUILD_ARCH}}"
-      - mkdir -p {{.OUTPUT_DIR}}
-      - go build -ldflags="-s -w" -o {{.OUTPUT_DIR}}/{{.APP_NAME}}{{.EXEC_EXT}} .
-    silent: false
+      - mkdir -p {{.BUILD_DIR}}
+      - go build {{.GOFLAGS}} -o {{.BUILD_DIR}}/{{.BINARY_NAME}} main.go
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
 
   build-all:
-    desc: Build for all supported platforms
+    desc: 为所有平台交叉编译
     cmds:
-      - task: build
-        vars:
-          BUILD_OS: windows
-          BUILD_ARCH: amd64
-      - task: build
-        vars:
-          BUILD_OS: linux
-          BUILD_ARCH: amd64
-      - task: build
-        vars:
-          BUILD_OS: darwin
-          BUILD_ARCH: amd64
-    silent: false
+      - echo "开始交叉编译..."
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=darwin GOARCH=arm64 go build {{.GOFLAGS}} -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-arm64 main.go
+      - GOOS=darwin GOARCH=amd64 go build {{.GOFLAGS}} -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-amd64 main.go
+      - GOOS=linux GOARCH=amd64 go build {{.GOFLAGS}} -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-amd64 main.go
+      - GOOS=linux GOARCH=arm64 go build {{.GOFLAGS}} -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-arm64 main.go
+      - GOOS=windows GOARCH=amd64 go build {{.GOFLAGS}} -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe main.go
+      - echo "编译完成！"
 
   clean:
-    desc: Clean build artifacts
+    desc: 清理构建产物和测试文件
     cmds:
-      - rm -rf {{.OUTPUT_DIR}}
-    silent: false 
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.html
+      - rm -f coverage.out
+
+  # 测试相关任务
+  test:
+    desc: 运行核心模块测试
+    cmds:
+      - go test ./scanner/... ./hasher/... ./database/...
+
+  test-all:
+    desc: 运行所有测试
+    cmds:
+      - go test ./... -v
+
+  test-coverage:
+    desc: 生成测试覆盖率报告（HTML）
+    cmds:
+      - go test ./scanner/... ./hasher/... ./database/... -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+
+  test-coverage-cmd:
+    desc: 查看覆盖率统计（命令行）
+    cmds:
+      - go test ./scanner/... ./hasher/... ./database/... -cover
+
+  test-race:
+    desc: 运行测试并检测竞态条件
+    cmds:
+      - go test ./... -race -short
+
+  # 程序运行
+  run:
+    desc: 启动 TUI 界面
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} run
+
+  init:
+    desc: 初始化配置文件
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} init
+
+  # 依赖管理
+  deps:
+    desc: 下载依赖
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  deps-update:
+    desc: 更新依赖到最新版本
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+
+  deps-verify:
+    desc: 验证依赖
+    cmds:
+      - go mod verify
+
+  # 代码质量
+  fmt:
+    desc: 格式化代码
+    cmds:
+      - go fmt ./...
+
+  fmt-check:
+    desc: 检查代码格式
+    cmds:
+      - test -z $(gofmt -l .)
+
+  vet:
+    desc: 运行 go vet 检查代码问题
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: 运行代码检查（需要安装 golangci-lint）
+    cmds:
+      - golangci-lint run
+
+  # 快速开发命令
+  dev:
+    desc: 开发模式：编译 + 测试
+    deps:
+      - build
+      - test
+
+  ci:
+    desc: CI 流程：检查格式 + Vet + 测试
+    cmds:
+      - task: fmt-check
+      - task: vet
+      - task: test
+
+  # 安装
+  install:
+    desc: 安装到 GOPATH
+    cmds:
+      - go install {{.PKG}}@latest
+
+  install-local:
+    desc: 本地安装
+    cmds:
+      - go install .
+
+  # 版本信息
+  version:
+    desc: 显示 Go 版本信息
+    cmds:
+      - go version

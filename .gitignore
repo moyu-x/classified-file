@@ -2,9 +2,10 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,goland,windows,macos,linux
 
 ### Go ###
-# If you prefer the allow list template instead of the deny list, see community template:
+# If you prefer to allow list template instead of a deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -15,7 +16,7 @@
 # Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Output of the go coverage tool
 *.out
 
 # Dependency directories (remove the comment below to include it)
@@ -32,7 +33,7 @@ go.work
 
 # Gradle and Maven with auto-import
 # When using Gradle or Maven with auto-import, you should exclude module files,
-# since they will be recreated, and may cause churn.  Uncomment if using
+# since they will be recreated, and may cause churn. Uncomment if using
 # auto-import.
 # .idea/artifacts
 # .idea/compiler.xml
@@ -87,7 +88,7 @@ fabric.properties
 # .idea/misc.xml
 # *.ipr
 
-# Sonarlint plugin
+# SonarLint plugin
 # https://plugins.jetbrains.com/plugin/7973-sonarlint
 .idea/**/sonarlint/
 
@@ -98,7 +99,7 @@ fabric.properties
 # Markdown Navigator plugin
 # https://plugins.jetbrains.com/plugin/7896-markdown-navigator-enhanced
 .idea/**/markdown-navigator.xml
-.idea/**/markdown-navigator-enh.xml
+.idea/**/markdown-navigator-enhanced.xml
 .idea/**/markdown-navigator/
 
 # Cache file creation bug
@@ -136,7 +137,6 @@ fabric.properties
 
 # Icon must end with two \r
 Icon
-
 
 # Thumbnails
 ._*
@@ -189,5 +189,34 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/go,goland,windows,macos,linux
 
-# custom
-bin
+# Project-specific ignores
+
+# Build output
+build/
+bin/
+
+# Test coverage
+coverage.html
+coverage.out
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Configuration
+~/.classified-file/
+
+# Temporary files
+*.test
+*.prof
+*.test
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
