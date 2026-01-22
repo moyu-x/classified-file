@@ -220,3 +220,6 @@ coverage.out
 # OS files
 .DS_Store
 Thumbs.db
+
+# AI
+AGENTS.md

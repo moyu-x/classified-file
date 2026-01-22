@@ -108,9 +108,6 @@ database:
 scanner:
   follow_symlinks: false
 
-performance:
-  workers: 6
-
 logging:
   level: "info"
   file: ""
@@ -129,7 +126,6 @@ func init() {
 	rootCmd.Flags().StringP("mode", "m", "delete", "操作模式: delete 或 move")
 	rootCmd.Flags().StringP("target-dir", "t", "", "移动模式的目标目录")
 	rootCmd.Flags().String("db", "", "数据库路径")
-	rootCmd.Flags().IntP("workers", "w", 6, "并发 worker 数量")
 	rootCmd.Flags().String("log-level", "info", "日志级别")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "显示哈希值（默认显示文件详情）")
 	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "预览模式，不实际修改文件")

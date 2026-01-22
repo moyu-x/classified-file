@@ -13,9 +13,6 @@ type Config struct {
 	Scanner struct {
 		FollowSymlinks bool
 	}
-	Performance struct {
-		Workers int
-	}
 	Logging struct {
 		Level string
 		File  string
@@ -34,7 +31,6 @@ func Load() (*Config, error) {
 
 	viper.SetDefault("database.path", internal.DefaultDatabasePath)
 	viper.SetDefault("scanner.follow_symlinks", false)
-	viper.SetDefault("performance.workers", internal.DefaultWorkers)
 	viper.SetDefault("logging.level", "info")
 
 	if err := viper.ReadInConfig(); err != nil {
