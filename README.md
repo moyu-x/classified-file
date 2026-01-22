@@ -55,7 +55,6 @@ classified-file ~/Downloads --verbose
 - `--mode, -m` - 操作模式 (delete|move) [默认: delete]
 - `--target-dir, -t` - 移动模式的目标目录 [默认: ""]
 - `--db` - 数据库路径 [默认: ~/.classified-file/hashes.db]
-- `--workers, -w` - 并发 worker 数量 [默认: 6]
 - `--log-level` - 日志级别 [默认: info]
 - `--verbose, -v` - 显示哈希值（默认显示文件详情）
 - `--dry-run` - 预览模式，不实际修改文件
@@ -97,9 +96,6 @@ database:
 
 scanner:
   follow_symlinks: false
-
-performance:
-  workers: 6
 
 logging:
   level: "info"
@@ -213,9 +209,6 @@ task test-coverage-cmd
 # 运行竞态条件检测
 task test-race
 
-# 启动程序（使用 build/ 目录中的程序）
-task run
-
 # 初始化配置文件
 task init
 
@@ -258,7 +251,7 @@ task test
 task build
 
 # 4. 运行程序
-task run
+./build/classified-file <directories>
 
 # 5. 清理
 task clean

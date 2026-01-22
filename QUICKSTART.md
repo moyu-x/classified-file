@@ -3,7 +3,7 @@
 ## 前置要求
 
 - Go 1.25.1 或更高版本
-- go-task（可选，但推荐）
+- go-task（可选，用于便捷的构建和测试）
 
 ## 安装
 
@@ -45,11 +45,17 @@ go build -o build/classified-file main.go
 ## 使用方法
 
 ```bash
-# 启动程序（当前平台）
-./build/classified-file run
+# 删除重复文件（默认操作）
+./build/classified-file ~/Downloads
 
-# 指定平台运行
-./build/classified-file-linux-amd64 run
+# 移动重复文件到指定目录
+./build/classified-file ~/Documents --mode move --target-dir ~/Duplicates
+
+# 预览操作（不实际修改文件）
+./build/classified-file ~/Downloads --dry-run
+
+# 显示详细哈希值
+./build/classified-file ~/Downloads --verbose
 
 # 查看帮助
 ./build/classified-file --help
@@ -97,11 +103,11 @@ classified-file/
 │   └── classified-file-windows-amd64.exe
 ├── cmd/                # 命令行框架
 ├── config/             # 配置管理
-├── tui/                # TUI 界面
 ├── scanner/            # 文件遍历
 ├── hasher/             # 哈希计算
 ├── database/           # 数据库操作
 ├── deduplicator/       # 去重逻辑
+├── logger/             # 日志管理
 ├── internal/           # 内部类型和常量
 ├── Taskfile.yml        # go-task 配置
 ├── .gitignore          # Git 忽略规则
