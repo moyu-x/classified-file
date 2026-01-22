@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/moyu-x/classified-file/database"
@@ -20,9 +21,11 @@ type Deduplicator struct {
 	targetDir    string
 	stats        internal.ProcessStats
 	progressChan chan internal.ProgressUpdate
+	totalFiles   int
+	verbose      bool
 }
 
-func NewDeduplicator(db *database.Database, mode internal.OperationMode, targetDir string) *Deduplicator {
+func NewDeduplicator(db *database.Database, mode internal.OperationMode, targetDir string, totalFiles int, verbose bool) *Deduplicator {
 	logger.Get().Info().Msgf("创建去重处理器，模式: %s", mode)
 	if targetDir != "" {
 		logger.Get().Info().Msgf("目标目录: %s", targetDir)
@@ -33,6 +36,8 @@ func NewDeduplicator(db *database.Database, mode internal.OperationMode, targetD
 		mode:         mode,
 		targetDir:    targetDir,
 		progressChan: make(chan internal.ProgressUpdate, 100),
+		totalFiles:   totalFiles,
+		verbose:      verbose,
 	}
 }
 
@@ -85,20 +90,42 @@ func (d *Deduplicator) processResults() {
 		}
 
 		if exists {
-			logger.Get().Debug().Msgf("发现重复文件: %s", result.Path)
 			switch d.mode {
 			case internal.ModeDelete:
 				if err := os.Remove(result.Path); err == nil {
 					d.stats.Deleted++
 					d.stats.FreedSpace += result.Size
-					logger.Get().Debug().Msgf("已删除重复文件: %s (释放 %d bytes)", result.Path, result.Size)
+					if d.verbose {
+						logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已删除, 哈希: %s)",
+							d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size), hashStr[:16]+"...")
+					} else {
+						logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已删除)",
+							d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size))
+					}
 				} else {
 					logger.Get().Error().Err(err).Msgf("删除文件失败: %s", result.Path)
 				}
 			case internal.ModeMove:
 				if err := d.moveFile(result.Path, hashStr); err == nil {
 					d.stats.Moved++
-					logger.Get().Debug().Msgf("已移动重复文件: %s", result.Path)
+					dstPath := d.buildDstPath(result.Path, hashStr)
+					if strings.Contains(filepath.Base(dstPath), "_") && !strings.HasPrefix(filepath.Base(dstPath), hashStr[:8]+"_"+hashStr[8:]) {
+						if d.verbose {
+							logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s [重命名], 哈希: %s)",
+								d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size), dstPath, hashStr[:16]+"...")
+						} else {
+							logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s [重命名])",
+								d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size), dstPath)
+						}
+					} else {
+						if d.verbose {
+							logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s, 哈希: %s)",
+								d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size), dstPath, hashStr[:16]+"...")
+						} else {
+							logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s)",
+								d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size), dstPath)
+						}
+					}
 				} else {
 					logger.Get().Error().Err(err).Msgf("移动文件失败: %s", result.Path)
 				}
@@ -112,7 +139,13 @@ func (d *Deduplicator) processResults() {
 			}
 			if err := d.db.Insert(record); err == nil {
 				d.stats.Added++
-				logger.Get().Trace().Msgf("新增记录: %s", result.Path)
+				if d.verbose {
+					logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s, 哈希: %s)",
+						d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size), hashStr[:16]+"...")
+				} else {
+					logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s)",
+						d.stats.TotalProcessed+1, d.totalFiles, result.Path, formatBytes(result.Size))
+				}
 			}
 		}
 
@@ -139,10 +172,68 @@ func (d *Deduplicator) moveFile(srcPath, hash string) error {
 
 	filename := filepath.Base(srcPath)
 	ext := filepath.Ext(filename)
-	dstPath := filepath.Join(d.targetDir, hash[:8]+"_"+hash[8:]+ext)
+
+	baseName := hash[:8] + "_" + hash[8:]
+	dstPath := filepath.Join(d.targetDir, baseName+ext)
+
+	conflictCounter := 0
+	for {
+		if _, err := os.Stat(dstPath); os.IsNotExist(err) {
+			break
+		} else if err != nil {
+			return fmt.Errorf("检查目标文件失败: %w", err)
+		}
+
+		conflictCounter++
+		newBaseName := fmt.Sprintf("%s_%d", baseName, conflictCounter)
+		dstPath = filepath.Join(d.targetDir, newBaseName+ext)
+
+		if conflictCounter == 1 {
+			logger.Get().Warn().Msgf("目标文件已存在，尝试重命名: %s", dstPath)
+		}
+
+		if conflictCounter >= 100 {
+			return fmt.Errorf("无法生成唯一文件名，已尝试 %d 次", conflictCounter)
+		}
+	}
 
 	logger.Get().Debug().Msgf("移动文件: %s -> %s", srcPath, dstPath)
 	return os.Rename(srcPath, dstPath)
+}
+
+func (d *Deduplicator) buildDstPath(srcPath, hash string) string {
+	filename := filepath.Base(srcPath)
+	ext := filepath.Ext(filename)
+	baseName := hash[:8] + "_" + hash[8:]
+	dstPath := filepath.Join(d.targetDir, baseName+ext)
+
+	conflictCounter := 0
+	for {
+		if _, err := os.Stat(dstPath); os.IsNotExist(err) {
+			break
+		}
+		conflictCounter++
+		newBaseName := fmt.Sprintf("%s_%d", baseName, conflictCounter)
+		dstPath = filepath.Join(d.targetDir, newBaseName+ext)
+		if conflictCounter >= 100 {
+			break
+		}
+	}
+
+	return dstPath
+}
+
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 func (d *Deduplicator) Progress() <-chan internal.ProgressUpdate {

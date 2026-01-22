@@ -22,7 +22,7 @@ func TestNewDeduplicator(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeDelete, "")
+	d := NewDeduplicator(db, internal.ModeDelete, "", 0, false)
 
 	if d == nil {
 		t.Error("Expected deduplicator to be created")
@@ -56,7 +56,7 @@ func TestNewDeduplicator_WithTargetDir(t *testing.T) {
 	defer db.Close()
 
 	targetDir := filepath.Join(tempDir, "duplicates")
-	d := NewDeduplicator(db, internal.ModeMove, targetDir)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, 0, false)
 
 	if d.targetDir != targetDir {
 		t.Errorf("Expected targetDir to be %s, got %s", targetDir, d.targetDir)
@@ -88,7 +88,7 @@ func TestDeduplicator_moveFile(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, targetDir)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, 0, false)
 
 	hash := "aabbccdd11223344"
 
@@ -129,7 +129,7 @@ func TestDeduplicator_moveFile_NoTargetDir(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, "")
+	d := NewDeduplicator(db, internal.ModeMove, "", 0, false)
 
 	hash := "aabbccdd11223344"
 
@@ -154,7 +154,7 @@ func TestDeduplicator_moveFile_CreatesTargetDir(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, nestedTargetDir)
+	d := NewDeduplicator(db, internal.ModeMove, nestedTargetDir, 0, false)
 
 	hash := "aabbccdd11223344"
 
@@ -178,7 +178,7 @@ func TestDeduplicator_Progress(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeDelete, "")
+	d := NewDeduplicator(db, internal.ModeDelete, "", 0, false)
 
 	progressChan := d.Progress()
 	if progressChan == nil {
@@ -187,6 +187,72 @@ func TestDeduplicator_Progress(t *testing.T) {
 
 	if cap(progressChan) != 100 {
 		t.Errorf("Expected progress channel buffer size 100, got %d", cap(progressChan))
+	}
+}
+
+func TestDeduplicator_moveFile_WithConflict(t *testing.T) {
+	tempDir := t.TempDir()
+	sourceDir := filepath.Join(tempDir, "source")
+	targetDir := filepath.Join(tempDir, "target")
+
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("Failed to create source directory: %v", err)
+	}
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		t.Fatalf("Failed to create target directory: %v", err)
+	}
+
+	db, err := database.NewDatabase(filepath.Join(tempDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, 0, false)
+
+	hash := "aabbccdd11223344"
+
+	srcFile1 := filepath.Join(sourceDir, "test.txt")
+	err = os.WriteFile(srcFile1, []byte("content"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	err = d.moveFile(srcFile1, hash)
+	if err != nil {
+		t.Errorf("First moveFile() error = %v", err)
+	}
+
+	srcFile2 := filepath.Join(sourceDir, "test2.txt")
+	err = os.WriteFile(srcFile2, []byte("content2"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	err = d.moveFile(srcFile2, hash)
+	if err != nil {
+		t.Errorf("Second moveFile() error = %v", err)
+	}
+
+	_, err = os.Stat(filepath.Join(targetDir, "aabbccdd_11223344.txt"))
+	if err != nil {
+		t.Errorf("First moved file not found: %v", err)
+	}
+
+	_, err = os.Stat(filepath.Join(targetDir, "aabbccdd_11223344_1.txt"))
+	if err != nil {
+		t.Errorf("Second moved file not found: %v", err)
+	}
+
+	_, err = os.Stat(srcFile1)
+	if !os.IsNotExist(err) {
+		t.Error("Expected first source file to be moved (no longer exist)")
+	}
+
+	_, err = os.Stat(srcFile2)
+	if !os.IsNotExist(err) {
+		t.Error("Expected second source file to be moved (no longer exist)")
 	}
 }
 

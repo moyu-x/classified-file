@@ -1,17 +1,18 @@
 # Classified File
 
-一个用于文件分类去重的命令行工具，提供交互式 TUI 界面。
+一个高效的文件分类和去重命令行工具。
 
 ## 功能特点
 
-- 交互式 TUI 界面，易于使用
 - 高效计算每个文件的 xxHash 哈希值（比 MD5 快 10 倍以上）
 - 使用 GORM 框架操作 SQLite 数据库（类型安全的 ORM）
 - 检测重复文件并支持两种处理模式：
   - 直接删除重复文件
   - 移动到指定目录
-- 实时显示处理进度和统计信息
+- 支持并发处理，提升性能
 - 支持遍历隐藏文件
+- 每个文件都显示详细处理日志
+- 支持移动模式下的文件名冲突自动重命名
 
 ## 安装方法
 
@@ -29,9 +30,54 @@ go build
 
 ## 使用方法
 
+### 基本用法
+
+```bash
+# 删除重复文件（默认输出每个文件的详细信息）
+classified-file ~/Downloads ~/Documents
+
+# 移动重复文件到指定目录
+classified-file ~/Downloads --mode move --target-dir ~/Duplicates
+
+# 预览操作（不实际修改文件）
+classified-file ~/Downloads --dry-run
+
+# 显示哈希值（verbose 模式）
+classified-file ~/Downloads --verbose
+```
+
+### 命令行参数
+
+**位置参数:**
+- `<directories...>` - 要扫描的目录路径（至少一个）
+
+**选项:**
+- `--mode, -m` - 操作模式 (delete|move) [默认: delete]
+- `--target-dir, -t` - 移动模式的目标目录 [默认: ""]
+- `--db` - 数据库路径 [默认: ~/.classified-file/hashes.db]
+- `--workers, -w` - 并发 worker 数量 [默认: 6]
+- `--log-level` - 日志级别 [默认: info]
+- `--verbose, -v` - 显示哈希值（默认显示文件详情）
+- `--dry-run` - 预览模式，不实际修改文件
+
+### 输出说明
+
+**默认输出**（每个文件都会显示详细信息）：
+```
+[1/1523] 新增记录: /path/to/file.jpg (2.3 MB)
+[2/1523] 发现重复: /path/to/duplicate.jpg (2.3 MB, 已删除)
+[3/1523] 发现重复: /path/to/file2.jpg (2.3 MB, 已移动到 ~/Duplicates)
+```
+
+**--verbose 输出**（额外显示哈希值）：
+```
+[1/1523] 新增记录: /path/to/file.jpg (2.3 MB, 哈希: a1b2c3d4e5f6g7h8...)
+[2/1523] 发现重复: /path/to/duplicate.jpg (2.3 MB, 已删除, 哈希: a1b2c3d4e5f6g7h8...)
+```
+
 ### 初始化配置
 
-首次使用前，建议先初始化配置文件：
+首次使用前，可以初始化配置文件：
 
 ```bash
 classified-file init
@@ -39,38 +85,7 @@ classified-file init
 
 这将在 `~/.classified-file/config.yaml` 创建配置文件。
 
-### 启动 TUI 界面
-
-```bash
-classified-file run
-```
-
-### TUI 界面操作
-
-1. **选择操作模式**
-   - 使用方向键选择：直接删除重复文件 或 移动到指定目录
-   - 按 Enter 确认
-
-2. **输入移动目标目录**（仅在移动模式下显示）
-   - 输入重复文件要移动到的目录
-   - 例如：`~/Duplicates`
-   - 按 Enter 确认
-
-3. **添加扫描目录**
-   - 在"输入要扫描的目录"输入框中输入目录路径
-   - 按 Enter 添加到目录列表
-   - 可以添加多个目录
-
-4. **开始处理**
-   - 按 Tab 键将焦点移到已添加目录列表
-   - 按 Enter 开始扫描和处理
-
-5. **其他操作**
-   - Tab 键：在各个输入框之间切换焦点
-   - Delete/Backspace 键：删除已添加的目录
-   - Ctrl+C：退出程序
-
-## 配置文件
+### 配置文件
 
 配置文件位于 `~/.classified-file/config.yaml`，内容示例：
 
@@ -86,19 +101,22 @@ scanner:
 performance:
   workers: 6
 
-ui:
-  default_mode: "delete"
-  default_target_dir: ""
-
 logging:
   level: "info"
   file: ""
 ```
 
+### 移动模式注意事项
+
+- 文件名格式：移动后的文件名基于 xxHash 值，格式为 `前8位_后8位.扩展名`
+- **自动重命名**：如果目标目录中已存在同名文件，会自动添加序号（如 `_1`, `_2` 等）避免冲突
+- 例如：`a1b2c3d4_e5f6g7h8.jpg` → `a1b2c3d4_e5f6g7h8_1.jpg` → `a1b2c3d4_e5f6g7h8_2.jpg`
+- 使用 `--verbose` 标志可以看到完整的哈希值
+
 ## 工作原理
 
-1. **扫描阶段**
-   - 工具遍历所有添加的目录
+1. **统计阶段**
+   - 工具遍历所有指定的目录
    - 统计文件总数（包括隐藏文件）
 
 2. **处理阶段**
@@ -108,6 +126,7 @@ logging:
        - 删除模式：直接删除文件
        - 移动模式：将文件移动到指定目录
      - 如果不存在，将哈希值和文件信息保存到数据库
+   - 每处理一个文件就输出详细日志
 
 3. **完成**
    - 显示处理统计：文件总数、新增记录、删除/移动数量、释放空间等
@@ -116,17 +135,16 @@ logging:
 
 - **命令行框架**: [cobra](https://github.com/spf13/cobra)
 - **配置管理**: [viper](https://github.com/spf13/viper)
-- **TUI 框架**: [bubbletea](https://github.com/charmbracelet/bubbletea) + [bubbles](https://github.com/charmbracelet/bubbles)
 - **哈希算法**: [xxHash](https://github.com/cespare/xxhash/v2)
 - **数据库**: [modernc.org/sqlite](https://gitlab.com/cznic/sqlite)（纯 Go 实现）
 
 ## 注意事项
 
-- 移动模式下的文件名会被重命名为 `前缀_后缀.扩展名` 格式，使用哈希值避免文件名冲突
 - 数据库默认位于 `~/.classified-file/hashes.db`
 - 支持处理隐藏文件（以 `.` 开头的文件）
 - 首次扫描速度较慢，因为需要计算所有文件的哈希值
 - 后续扫描速度会更快，因为已经识别了重复文件
+- 移动模式下的文件名会被重命名为 `前缀_后缀.扩展名` 格式，使用哈希值避免文件名冲突
 
 ## 构建输出
 
@@ -229,22 +247,6 @@ task dev
 task ci
 ```
 
-### 构建输出
-
-所有构建产物都会输出到 `build/` 目录：
-
-```
-build/
-├── classified-file              # 当前平台二进制
-├── classified-file-darwin-arm64
-├── classified-file-darwin-amd64
-├── classified-file-linux-amd64
-├── classified-file-linux-arm64
-└── classified-file-windows-amd64.exe
-```
-
-**注意**: `build/` 目录已被添加到 `.gitignore`，不会提交到版本控制。
-
 ### 开发工作流
 
 ```bash
@@ -267,6 +269,7 @@ task clean
 - **scanner 模块** (93.3%): 文件遍历、计数、符号链接处理
 - **hasher 模块** (95.2%): 哈希计算、并发处理、大文件处理
 - **database 模块** (78.7%): 数据库 CRUD、缓存、持久化
+- **deduplicator 模块**: 去重逻辑、文件移动、冲突处理
 
 ### 测试安全
 

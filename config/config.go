@@ -16,10 +16,6 @@ type Config struct {
 	Performance struct {
 		Workers int
 	}
-	UI struct {
-		DefaultMode      internal.OperationMode
-		DefaultTargetDir string
-	}
 	Logging struct {
 		Level string
 		File  string
@@ -39,8 +35,6 @@ func Load() (*Config, error) {
 	viper.SetDefault("database.path", internal.DefaultDatabasePath)
 	viper.SetDefault("scanner.follow_symlinks", false)
 	viper.SetDefault("performance.workers", internal.DefaultWorkers)
-	viper.SetDefault("ui.default_mode", internal.ModeDelete)
-	viper.SetDefault("ui.default_target_dir", "")
 	viper.SetDefault("logging.level", "info")
 
 	if err := viper.ReadInConfig(); err != nil {
