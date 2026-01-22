@@ -56,8 +56,6 @@ func (d *Deduplicator) Process(dirs []string) (*internal.ProcessStats, error) {
 }
 
 func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
-	defer close(d.progressChan)
-
 	for _, dir := range dirs {
 		walker.Walk(dir, func(path string, info os.FileInfo) error {
 			hash, err := hasher.CalculateHash(path)
@@ -135,15 +133,6 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 			}
 
 			d.stats.TotalProcessed++
-
-			d.progressChan <- internal.ProgressUpdate{
-				Processed:   d.stats.TotalProcessed,
-				Added:       d.stats.Added,
-				Deleted:     d.stats.Deleted,
-				Moved:       d.stats.Moved,
-				CurrentFile: path,
-			}
-
 			return nil
 		})
 	}
