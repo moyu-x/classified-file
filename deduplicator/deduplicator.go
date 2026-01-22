@@ -49,7 +49,8 @@ func (d *Deduplicator) Process(dirs []string) (*internal.ProcessStats, error) {
 	walker := scanner.NewFileWalker()
 	d.processFiles(walker, dirs)
 
-	duration := time.Since(d.stats.StartTime)
+	d.stats.EndTime = time.Now()
+	duration := d.stats.EndTime.Sub(d.stats.StartTime)
 	logger.Get().Info().Msgf("文件处理完成，总耗时: %v", duration)
 	return &d.stats, nil
 }
@@ -65,7 +66,7 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 				return nil
 			}
 
-			hashStr := fmt.Sprintf("%x", hash)
+			hashStr := fmt.Sprintf("%016x", hash)
 
 			exists, err := d.db.Exists(hashStr)
 			if err != nil {
@@ -81,7 +82,7 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 						d.stats.FreedSpace += info.Size()
 						if d.verbose {
 							logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已删除, 哈希: %s)",
-								d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr[:16]+"...")
+								d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr)
 						} else {
 							logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已删除)",
 								d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()))
@@ -96,7 +97,7 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 						if strings.Contains(filepath.Base(dstPath), "_") && !strings.HasPrefix(filepath.Base(dstPath), hashStr[:8]+"_"+hashStr[8:]) {
 							if d.verbose {
 								logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s [重命名], 哈希: %s)",
-									d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), dstPath, hashStr[:16]+"...")
+									d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), dstPath, hashStr)
 							} else {
 								logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s [重命名])",
 									d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), dstPath)
@@ -104,7 +105,7 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 						} else {
 							if d.verbose {
 								logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s, 哈希: %s)",
-									d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), dstPath, hashStr[:16]+"...")
+									d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), dstPath, hashStr)
 							} else {
 								logger.Get().Info().Msgf("[%d/%d] 发现重复: %s (%s, 已移动到 %s)",
 									d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), dstPath)
@@ -125,7 +126,7 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 					d.stats.Added++
 					if d.verbose {
 						logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s, 哈希: %s)",
-							d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr[:16]+"...")
+							d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr)
 					} else {
 						logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s)",
 							d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()))
