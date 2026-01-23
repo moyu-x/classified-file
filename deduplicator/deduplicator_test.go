@@ -22,7 +22,7 @@ func TestNewDeduplicator(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeDelete, "", 0, false)
+	d := NewDeduplicator(db, internal.ModeDelete, "", false)
 
 	if d == nil {
 		t.Error("Expected deduplicator to be created")
@@ -56,7 +56,7 @@ func TestNewDeduplicator_WithTargetDir(t *testing.T) {
 	defer db.Close()
 
 	targetDir := filepath.Join(tempDir, "duplicates")
-	d := NewDeduplicator(db, internal.ModeMove, targetDir, 0, false)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, false)
 
 	if d.targetDir != targetDir {
 		t.Errorf("Expected targetDir to be %s, got %s", targetDir, d.targetDir)
@@ -88,7 +88,7 @@ func TestDeduplicator_moveFile(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, targetDir, 0, false)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, false)
 
 	hash := "aabbccdd11223344"
 
@@ -129,7 +129,7 @@ func TestDeduplicator_moveFile_NoTargetDir(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, "", 0, false)
+	d := NewDeduplicator(db, internal.ModeMove, "", false)
 
 	hash := "aabbccdd11223344"
 
@@ -154,7 +154,7 @@ func TestDeduplicator_moveFile_CreatesTargetDir(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, nestedTargetDir, 0, false)
+	d := NewDeduplicator(db, internal.ModeMove, nestedTargetDir, false)
 
 	hash := "aabbccdd11223344"
 
@@ -178,7 +178,7 @@ func TestDeduplicator_Progress(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeDelete, "", 0, false)
+	d := NewDeduplicator(db, internal.ModeDelete, "", false)
 
 	progressChan := d.Progress()
 	if progressChan == nil {
@@ -209,7 +209,7 @@ func TestDeduplicator_moveFile_WithConflict(t *testing.T) {
 	}
 	defer db.Close()
 
-	d := NewDeduplicator(db, internal.ModeMove, targetDir, 0, false)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, false)
 
 	hash := "aabbccdd11223344"
 
@@ -421,9 +421,9 @@ func TestDeduplicator_Process_DeleteMode(t *testing.T) {
 		t.Fatalf("Failed to insert record: %v", err)
 	}
 
-	d := NewDeduplicator(db, internal.ModeDelete, "", 3, false)
+	d := NewDeduplicator(db, internal.ModeDelete, "", false)
 
-	stats, err := d.Process([]string{testFilesDir})
+	stats, err := d.Process([]string{testFilesDir}, false, false)
 	if err != nil {
 		t.Fatalf("Process() error = %v", err)
 	}
@@ -517,9 +517,9 @@ func TestDeduplicator_Process_MoveMode(t *testing.T) {
 		t.Fatalf("Failed to insert record: %v", err)
 	}
 
-	d := NewDeduplicator(db, internal.ModeMove, targetDir, 3, false)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, false)
 
-	stats, err := d.Process([]string{testFilesDir})
+	stats, err := d.Process([]string{testFilesDir}, false, false)
 	if err != nil {
 		t.Fatalf("Process() error = %v", err)
 	}
@@ -622,9 +622,9 @@ func TestDeduplicator_Process_WithExistingDatabaseRecords(t *testing.T) {
 		t.Fatalf("Failed to insert record: %v", err)
 	}
 
-	d := NewDeduplicator(db, internal.ModeMove, targetDir, 3, false)
+	d := NewDeduplicator(db, internal.ModeMove, targetDir, false)
 
-	stats, err := d.Process([]string{testFilesDir})
+	stats, err := d.Process([]string{testFilesDir}, false, false)
 	if err != nil {
 		t.Fatalf("Process() error = %v", err)
 	}
@@ -681,9 +681,9 @@ func TestDeduplicator_Process_EmptyDirectory(t *testing.T) {
 		t.Fatalf("Failed to create empty directory: %v", err)
 	}
 
-	d := NewDeduplicator(db, internal.ModeDelete, "", 0, false)
+	d := NewDeduplicator(db, internal.ModeDelete, "", false)
 
-	stats, err := d.Process([]string{emptyDir})
+	stats, err := d.Process([]string{emptyDir}, false, false)
 	if err != nil {
 		t.Fatalf("Process() error = %v", err)
 	}
@@ -791,9 +791,9 @@ func TestDeduplicator_Process_Statistics(t *testing.T) {
 		t.Fatalf("Failed to insert record3: %v", err)
 	}
 
-	d := NewDeduplicator(db, internal.ModeDelete, "", len(files), false)
+	d := NewDeduplicator(db, internal.ModeDelete, "", false)
 
-	stats, err := d.Process([]string{testFilesDir})
+	stats, err := d.Process([]string{testFilesDir}, false, false)
 	if err != nil {
 		t.Fatalf("Process() error = %v", err)
 	}

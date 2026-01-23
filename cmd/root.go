@@ -9,13 +9,14 @@ import (
 	"github.com/moyu-x/classified-file/deduplicator"
 	"github.com/moyu-x/classified-file/internal"
 	"github.com/moyu-x/classified-file/logger"
-	"github.com/moyu-x/classified-file/scanner"
 	"github.com/spf13/cobra"
 )
 
 var (
 	verbose bool
 	dryRun  bool
+	resume  bool
+	reset   bool
 )
 
 var rootCmd = &cobra.Command{
@@ -59,22 +60,16 @@ var rootCmd = &cobra.Command{
 		if targetDir != "" {
 			logger.Get().Info().Msgf("目标目录: %s", targetDir)
 		}
-
-		walker := scanner.NewFileWalker()
-		totalFiles, err := walker.CountFiles(args)
-		if err != nil {
-			return fmt.Errorf("统计文件数量失败: %w", err)
-		}
-
-		logger.Get().Info().Msgf("文件统计完成，共找到 %d 个文件", totalFiles)
+		logger.Get().Info().Msgf("恢复模式: %v", resume)
+		logger.Get().Info().Msgf("重置模式: %v", reset)
 
 		if dryRun {
 			logger.Get().Info().Msg("=== 预览模式，不会实际修改文件 ===")
 		}
 
-		dedup := deduplicator.NewDeduplicator(db, internal.OperationMode(modeStr), targetDir, totalFiles, verbose)
+		dedup := deduplicator.NewDeduplicator(db, internal.OperationMode(modeStr), targetDir, verbose)
 
-		stats, err := dedup.Process(args)
+		stats, err := dedup.Process(args, resume, reset)
 		if err != nil {
 			return err
 		}
@@ -123,12 +118,16 @@ func Execute() {
 }
 
 func init() {
+	deduplicator.SetupSignalHandler()
+
 	rootCmd.Flags().StringP("mode", "m", "delete", "操作模式: delete 或 move")
 	rootCmd.Flags().StringP("target-dir", "t", "", "移动模式的目标目录")
 	rootCmd.Flags().String("db", "", "数据库路径")
 	rootCmd.Flags().String("log-level", "info", "日志级别")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "显示哈希值（默认显示文件详情）")
 	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "预览模式，不实际修改文件")
+	rootCmd.Flags().BoolVarP(&resume, "resume", "r", false, "恢复模式：跳过已扫描的文件")
+	rootCmd.Flags().BoolVarP(&reset, "reset", "R", false, "重置模式：清除进度文件，重新扫描")
 
 	rootCmd.AddCommand(initCmd)
 }
