@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/moyu-x/classified-file/app"
-	"github.com/moyu-x/classified-file/config"
+	"github.com/moyu-x/classified-file/internal/app"
+	"github.com/moyu-x/classified-file/pkg/config"
 	"github.com/spf13/cobra"
 )
 

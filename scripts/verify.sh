@@ -113,7 +113,7 @@ echo ""
 echo "8. 测试检查"
 if command -v task &> /dev/null; then
     echo "   运行测试..."
-    if go test ./scanner/... ./hasher/... ./database/... >/dev/null 2>&1; then
+    if go test ./pkg/scanner/... ./pkg/hasher/... ./pkg/database/... >/dev/null 2>&1; then
         echo "   ✅ 所有测试通过"
     else
         echo "   ⚠️  部分测试失败，运行 task test-all 查看详情"

@@ -3,11 +3,11 @@ package app
 import (
 	"fmt"
 
-	"github.com/moyu-x/classified-file/config"
-	"github.com/moyu-x/classified-file/database"
-	"github.com/moyu-x/classified-file/deduplicator"
+	"github.com/moyu-x/classified-file/pkg/config"
+	"github.com/moyu-x/classified-file/pkg/database"
+	"github.com/moyu-x/classified-file/pkg/deduplicator"
 	"github.com/moyu-x/classified-file/internal"
-	"github.com/moyu-x/classified-file/logger"
+	"github.com/moyu-x/classified-file/pkg/logger"
 )
 
 type DedupOptions struct {

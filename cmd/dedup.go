@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/moyu-x/classified-file/app"
-	"github.com/moyu-x/classified-file/config"
-	"github.com/moyu-x/classified-file/deduplicator"
+	"github.com/moyu-x/classified-file/internal/app"
+	"github.com/moyu-x/classified-file/pkg/config"
+	"github.com/moyu-x/classified-file/pkg/deduplicator"
 	"github.com/moyu-x/classified-file/internal"
-	"github.com/moyu-x/classified-file/logger"
+	"github.com/moyu-x/classified-file/pkg/logger"
 	"github.com/spf13/cobra"
 )
 

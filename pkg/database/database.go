@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/moyu-x/classified-file/internal"
-	"github.com/moyu-x/classified-file/logger"
+	"github.com/moyu-x/classified-file/pkg/logger"
 )
 
 type FileRecord struct {

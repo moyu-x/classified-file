@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/moyu-x/classified-file/database"
-	"github.com/moyu-x/classified-file/hasher"
+	"github.com/moyu-x/classified-file/pkg/database"
+	"github.com/moyu-x/classified-file/pkg/hasher"
 	"github.com/moyu-x/classified-file/internal"
 )
 

@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/moyu-x/classified-file/logger"
+	"github.com/moyu-x/classified-file/pkg/logger"
 )
 
 func CalculateHash(filePath string) (uint64, error) {

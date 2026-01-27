@@ -11,8 +11,8 @@ import (
 
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
-	"github.com/moyu-x/classified-file/logger"
-	"github.com/moyu-x/classified-file/scanner"
+	"github.com/moyu-x/classified-file/pkg/logger"
+	"github.com/moyu-x/classified-file/pkg/scanner"
 )
 
 const (

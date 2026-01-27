@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/moyu-x/classified-file/classifier"
-	"github.com/moyu-x/classified-file/logger"
+	"github.com/moyu-x/classified-file/pkg/classifier"
+	"github.com/moyu-x/classified-file/pkg/logger"
 )
 
 type ClassifyOptions struct {

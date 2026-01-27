@@ -47,7 +47,7 @@ tasks:
   test:
     desc: 运行核心模块测试
     cmds:
-      - go test ./scanner/... ./hasher/... ./database/...
+      - go test ./pkg/scanner/... ./pkg/hasher/... ./pkg/database/...
 
   test-all:
     desc: 运行所有测试
@@ -57,13 +57,13 @@ tasks:
   test-coverage:
     desc: 生成测试覆盖率报告（HTML）
     cmds:
-      - go test ./scanner/... ./hasher/... ./database/... -coverprofile=coverage.out
+      - go test ./pkg/scanner/... ./pkg/hasher/... ./pkg/database/... -coverprofile=coverage.out
       - go tool cover -html=coverage.out -o coverage.html
 
   test-coverage-cmd:
     desc: 查看覆盖率统计（命令行）
     cmds:
-      - go test ./scanner/... ./hasher/... ./database/... -cover
+      - go test ./pkg/scanner/... ./pkg/hasher/... ./pkg/database/... -cover
 
   test-race:
     desc: 运行测试并检测竞态条件

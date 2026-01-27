@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/moyu-x/classified-file/database"
-	"github.com/moyu-x/classified-file/hasher"
+	"github.com/moyu-x/classified-file/pkg/database"
+	"github.com/moyu-x/classified-file/pkg/hasher"
 	"github.com/moyu-x/classified-file/internal"
-	"github.com/moyu-x/classified-file/logger"
-	"github.com/moyu-x/classified-file/progress"
-	"github.com/moyu-x/classified-file/scanner"
+	"github.com/moyu-x/classified-file/pkg/logger"
+	"github.com/moyu-x/classified-file/pkg/progress"
+	"github.com/moyu-x/classified-file/pkg/scanner"
 )
 
 type Deduplicator struct {
