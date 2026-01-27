@@ -5,6 +5,7 @@ go 1.25.1
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/glebarez/sqlite v1.11.0
+	github.com/h2non/filetype v1.1.3
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
