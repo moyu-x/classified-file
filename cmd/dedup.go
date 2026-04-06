@@ -58,7 +58,7 @@ func runDedup(cmd *cobra.Command, args []string) error {
 func init() {
 	deduplicator.SetupSignalHandler()
 
-	dedupCmd.Flags().StringP("mode", "m", "delete", "操作模式: delete 或 move")
+	dedupCmd.Flags().StringP("mode", "m", "delete", "操作模式: delete、move 或 hash")
 	dedupCmd.Flags().StringP("target-dir", "t", "", "移动模式的目标目录")
 	dedupCmd.Flags().String("db", "", "数据库路径")
 	dedupCmd.Flags().String("log-level", "info", "日志级别")

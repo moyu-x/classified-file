@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/moyu-x/classified-file/internal"
 	"github.com/moyu-x/classified-file/pkg/database"
 	"github.com/moyu-x/classified-file/pkg/hasher"
-	"github.com/moyu-x/classified-file/internal"
+	"github.com/moyu-x/classified-file/pkg/logger"
 )
 
 func TestNewDeduplicator(t *testing.T) {
@@ -825,5 +826,249 @@ func TestDeduplicator_Process_Statistics(t *testing.T) {
 
 	if stats.EndTime.IsZero() {
 		t.Error("Expected EndTime to be set")
+	}
+}
+
+func TestDeduplicator_Process_HashMode(t *testing.T) {
+	_ = logger.Init("info", "")
+
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test.db")
+	testFilesDir := filepath.Join(tempDir, "files")
+
+	if err := os.MkdirAll(testFilesDir, 0755); err != nil {
+		t.Fatalf("Failed to create test files directory: %v", err)
+	}
+
+	db, err := database.NewDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	duplicateContent := []byte("duplicate content")
+	uniqueContent := []byte("unique content")
+
+	file1 := filepath.Join(testFilesDir, "file1.txt")
+	if err := os.WriteFile(file1, duplicateContent, 0644); err != nil {
+		t.Fatalf("Failed to create file1: %v", err)
+	}
+
+	file2 := filepath.Join(testFilesDir, "file2.txt")
+	if err := os.WriteFile(file2, duplicateContent, 0644); err != nil {
+		t.Fatalf("Failed to create file2: %v", err)
+	}
+
+	file3 := filepath.Join(testFilesDir, "file3.txt")
+	if err := os.WriteFile(file3, uniqueContent, 0644); err != nil {
+		t.Fatalf("Failed to create file3: %v", err)
+	}
+
+	hash, err := hasher.CalculateHash(file1)
+	if err != nil {
+		t.Fatalf("CalculateHash() error = %v", err)
+	}
+	hashStr := fmt.Sprintf("%016x", hash)
+
+	record := &internal.FileRecord{
+		Hash:      hashStr,
+		FilePath:  "/some/other/path/file1.txt",
+		FileSize:  int64(len(duplicateContent)),
+		CreatedAt: time.Now().Unix(),
+	}
+	if err := db.Insert(record); err != nil {
+		t.Fatalf("Failed to insert record: %v", err)
+	}
+
+	d := NewDeduplicator(db, internal.ModeHash, "", false)
+
+	stats, err := d.Process([]string{testFilesDir}, false, false)
+	if err != nil {
+		t.Fatalf("Process() error = %v", err)
+	}
+
+	if stats == nil {
+		t.Fatal("Expected stats to be returned")
+	}
+
+	if stats.Added != 1 {
+		t.Errorf("Expected 1 file added, got %d", stats.Added)
+	}
+	if stats.Deleted != 0 {
+		t.Errorf("Expected 0 files deleted, got %d", stats.Deleted)
+	}
+	if stats.Moved != 0 {
+		t.Errorf("Expected 0 files moved, got %d", stats.Moved)
+	}
+	if stats.TotalProcessed != 3 {
+		t.Errorf("Expected 3 files processed, got %d", stats.TotalProcessed)
+	}
+
+	if _, err := os.Stat(file1); os.IsNotExist(err) {
+		t.Error("Expected file1 to still exist in hash mode")
+	}
+	if _, err := os.Stat(file2); os.IsNotExist(err) {
+		t.Error("Expected file2 to still exist in hash mode")
+	}
+	if _, err := os.Stat(file3); os.IsNotExist(err) {
+		t.Error("Expected file3 to still exist in hash mode")
+	}
+}
+
+func TestDeduplicator_Process_HashMode_AllNew(t *testing.T) {
+	_ = logger.Init("info", "")
+
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test.db")
+	testFilesDir := filepath.Join(tempDir, "files")
+
+	if err := os.MkdirAll(testFilesDir, 0755); err != nil {
+		t.Fatalf("Failed to create test files directory: %v", err)
+	}
+
+	db, err := database.NewDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	file1 := filepath.Join(testFilesDir, "file1.txt")
+	if err := os.WriteFile(file1, []byte("content A"), 0644); err != nil {
+		t.Fatalf("Failed to create file1: %v", err)
+	}
+	file2 := filepath.Join(testFilesDir, "file2.txt")
+	if err := os.WriteFile(file2, []byte("content B"), 0644); err != nil {
+		t.Fatalf("Failed to create file2: %v", err)
+	}
+
+	d := NewDeduplicator(db, internal.ModeHash, "", false)
+
+	stats, err := d.Process([]string{testFilesDir}, false, false)
+	if err != nil {
+		t.Fatalf("Process() error = %v", err)
+	}
+
+	if stats.Added != 2 {
+		t.Errorf("Expected 2 files added, got %d", stats.Added)
+	}
+	if stats.Deleted != 0 {
+		t.Errorf("Expected 0 files deleted, got %d", stats.Deleted)
+	}
+	if stats.Moved != 0 {
+		t.Errorf("Expected 0 files moved, got %d", stats.Moved)
+	}
+
+	hash1, _ := hasher.CalculateHash(file1)
+	hashStr1 := fmt.Sprintf("%016x", hash1)
+	exists, err := db.Exists(hashStr1)
+	if err != nil || !exists {
+		t.Error("Expected file1 hash to exist in database")
+	}
+
+	hash2, _ := hasher.CalculateHash(file2)
+	hashStr2 := fmt.Sprintf("%016x", hash2)
+	exists2, err := db.Exists(hashStr2)
+	if err != nil || !exists2 {
+		t.Error("Expected file2 hash to exist in database")
+	}
+
+	if _, err := os.Stat(file1); os.IsNotExist(err) {
+		t.Error("Expected file1 to still exist")
+	}
+	if _, err := os.Stat(file2); os.IsNotExist(err) {
+		t.Error("Expected file2 to still exist")
+	}
+}
+
+func TestDeduplicator_Process_HashMode_AllDuplicates(t *testing.T) {
+	_ = logger.Init("info", "")
+
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test.db")
+	testFilesDir := filepath.Join(tempDir, "files")
+
+	if err := os.MkdirAll(testFilesDir, 0755); err != nil {
+		t.Fatalf("Failed to create test files directory: %v", err)
+	}
+
+	db, err := database.NewDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	content := []byte("same content everywhere")
+
+	file1 := filepath.Join(testFilesDir, "file1.txt")
+	file2 := filepath.Join(testFilesDir, "file2.txt")
+	file3 := filepath.Join(testFilesDir, "file3.txt")
+
+	for _, f := range []string{file1, file2, file3} {
+		if err := os.WriteFile(f, content, 0644); err != nil {
+			t.Fatalf("Failed to create file: %v", err)
+		}
+	}
+
+	hash, _ := hasher.CalculateHash(file1)
+	hashStr := fmt.Sprintf("%016x", hash)
+	db.Insert(&internal.FileRecord{
+		Hash: hashStr, FilePath: "/original.txt",
+		FileSize: int64(len(content)), CreatedAt: time.Now().Unix(),
+	})
+
+	d := NewDeduplicator(db, internal.ModeHash, "", false)
+
+	stats, err := d.Process([]string{testFilesDir}, false, false)
+	if err != nil {
+		t.Fatalf("Process() error = %v", err)
+	}
+
+	if stats.Added != 0 {
+		t.Errorf("Expected 0 files added, got %d", stats.Added)
+	}
+	if stats.Deleted != 0 {
+		t.Errorf("Expected 0 files deleted, got %d", stats.Deleted)
+	}
+	if stats.Moved != 0 {
+		t.Errorf("Expected 0 files moved, got %d", stats.Moved)
+	}
+	if stats.TotalProcessed != 3 {
+		t.Errorf("Expected 3 files processed, got %d", stats.TotalProcessed)
+	}
+
+	for _, f := range []string{file1, file2, file3} {
+		if _, err := os.Stat(f); os.IsNotExist(err) {
+			t.Errorf("Expected %s to still exist in hash mode", f)
+		}
+	}
+}
+
+func TestDeduplicator_Process_HashMode_EmptyDirectory(t *testing.T) {
+	_ = logger.Init("info", "")
+
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test.db")
+
+	db, err := database.NewDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	emptyDir := filepath.Join(tempDir, "empty")
+	if err := os.MkdirAll(emptyDir, 0755); err != nil {
+		t.Fatalf("Failed to create empty directory: %v", err)
+	}
+
+	d := NewDeduplicator(db, internal.ModeHash, "", false)
+
+	stats, err := d.Process([]string{emptyDir}, false, false)
+	if err != nil {
+		t.Fatalf("Process() error = %v", err)
+	}
+
+	if stats.Added != 0 || stats.Deleted != 0 || stats.Moved != 0 || stats.TotalProcessed != 0 {
+		t.Errorf("Expected all zeros for empty dir, got added=%d deleted=%d moved=%d total=%d",
+			stats.Added, stats.Deleted, stats.Moved, stats.TotalProcessed)
 	}
 }

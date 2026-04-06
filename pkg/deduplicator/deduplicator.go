@@ -160,8 +160,13 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 			}
 
 			if exists {
-				logger.Get().Debug().Msgf("File is duplicate (hash exists): %s", path)
-				d.handleDuplicate(path, info, hashStr)
+				if d.mode == internal.ModeHash {
+					logger.Get().Info().Msgf("[%d/%d] 已存在: %s (%s, 哈希: %s)",
+						d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr)
+				} else {
+					logger.Get().Debug().Msgf("File is duplicate (hash exists): %s", path)
+					d.handleDuplicate(path, info, hashStr)
+				}
 			} else {
 				logger.Get().Debug().Msgf("File is new (hash not in DB): %s", path)
 				record := &internal.FileRecord{
@@ -172,13 +177,8 @@ func (d *Deduplicator) processFiles(walker *scanner.FileWalker, dirs []string) {
 				}
 				if err := d.db.Insert(record); err == nil {
 					d.stats.Added++
-					if d.verbose {
-						logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s, 哈希: %s)",
-							d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr)
-					} else {
-						logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s)",
-							d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()))
-					}
+					logger.Get().Info().Msgf("[%d/%d] 新增记录: %s (%s, 哈希: %s)",
+						d.stats.TotalProcessed+1, d.totalFiles, path, formatBytes(info.Size()), hashStr)
 				}
 			}
 

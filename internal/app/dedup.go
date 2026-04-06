@@ -51,6 +51,10 @@ func RunDedup(opts *DedupOptions) (*internal.ProcessStats, error) {
 		return nil, fmt.Errorf("使用 move 模式时必须指定 --target-dir")
 	}
 
+	if opts.Mode == "hash" {
+		logger.Get().Info().Msg("=== 仅计算哈希模式，不会修改文件 ===")
+	}
+
 	logger.Get().Info().Msgf("操作模式: %s", opts.Mode)
 	if opts.TargetDir != "" {
 		logger.Get().Info().Msgf("目标目录: %s", opts.TargetDir)

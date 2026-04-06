@@ -8,6 +8,7 @@ type OperationMode string
 const (
 	ModeDelete OperationMode = "delete"
 	ModeMove   OperationMode = "move"
+	ModeHash   OperationMode = "hash"
 )
 
 // 处理统计

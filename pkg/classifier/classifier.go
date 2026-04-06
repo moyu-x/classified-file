@@ -132,12 +132,12 @@ func (c *Classifier) processFile(filePath, destDir string, stats *ClassifierStat
 		return err
 	}
 
-	if err := c.copyFile(filePath, targetPath); err != nil {
-		return fmt.Errorf("复制文件: %w", err)
+	if err := c.moveFile(filePath, targetPath); err != nil {
+		return fmt.Errorf("移动文件: %w", err)
 	}
 
 	stats.Processed++
-	logger.Get().Debug().Msgf("已处理: %s -> %s (%s)", filePath, targetPath, category)
+	logger.Get().Info().Msgf("已移动: %s -> %s (%s)", filePath, targetPath, category)
 
 	return nil
 }
@@ -269,6 +269,20 @@ func (c *Classifier) copyFile(src, dst string) error {
 	}
 
 	return os.Chmod(dst, sourceInfo.Mode())
+}
+
+func (c *Classifier) moveFile(src, dst string) error {
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	} else {
+		logger.Get().Warn().Err(err).Msgf("重命名失败，尝试复制后删除: %s -> %s", src, dst)
+	}
+
+	// Cross-device fallback: copy then delete
+	if err := c.copyFile(src, dst); err != nil {
+		return err
+	}
+	return os.Remove(src)
 }
 
 func copyBuffer(dst io.Writer, src io.Reader) (int64, int64, error) {
